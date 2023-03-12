@@ -1,4 +1,6 @@
 import psycopg2
+from fastapi import HTTPException
+
 from config import db_host, db_user, db_password, db_name
 
 
@@ -67,5 +69,47 @@ def register_user_in_db(newuser_login, newuser_password):
 		print(f'[ERROR] что-то пошло не так O_o {_ex}')
 		return -1
 
+
+def change_user_profil_information(id_user, firs_name, las_name, pasword):
+	# Проверяем нужно ли что то менять
+	ans = []
+	if firs_name is not None or las_name is not None or pasword is not None:
+		old_data = [None, None, None]
+		try:
+			# подключение к бд
+			with psycopg2.connect(host=db_host, user=db_user, password=db_password, database=db_name) as connection:
+
+				# создаём курсор для выполнения запроса к бд
+				with connection.cursor() as cursor:
+
+					# меняем нужные данные
+					if firs_name is not None:
+						cursor.execute(f"SELECT first_name from users WHERE id={id_user};")
+						old_data[0] = cursor.fetchone()[0]
+						cursor.execute(f"UPDATE users SET first_name = '{firs_name}' WHERE id={id_user};")
+					if las_name is not None:
+						cursor.execute(f"SELECT last_name from users WHERE id={id_user};")
+						old_data[1] = cursor.fetchone()[0]
+						cursor.execute(f"UPDATE users SET last_name = '{las_name}' WHERE id={id_user};")
+					if pasword is not None:
+						cursor.execute(f"SELECT user_password from users WHERE id={id_user};")
+						old_data[2] = cursor.fetchone()[0]
+						cursor.execute(f"UPDATE users SET user_password = '{pasword}' WHERE id={id_user};")
+		# в случае если что то пошло не так
+		except:
+			return HTTPException(status_code=500, detail='Internal server error')
+
+		if old_data[0] is not None:
+			ans.append(f'{old_data[0]} изменено на -> {firs_name}')
+		if old_data[1] is not None:
+			ans.append(f'{old_data[1]} изменено на -> {las_name}')
+		if old_data[2] is not None:
+			ans.append(f'{old_data[2]} изменено на -> {pasword}')
+		return ans
+	else:
+		return ans
+
+
+#print(change_user_profil_information(9, None, 'aaaaaaa', 'bbbbbb'))
 # get_information_about_server()
 # register_user_in_db('elizavet', 'joty')
